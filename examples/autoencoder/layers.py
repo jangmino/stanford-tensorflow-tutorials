@@ -16,15 +16,22 @@ def conv(input, name, filter_dims, stride_dims, padding='SAME',
     # Define a variable scope for the conv layer
     with tf.variable_scope(name) as scope:
         # Create filter weight variable
+        w = tf.get_variable('kernel', [filter_h, filter_w, num_channels_in, num_channels_out])
         
         # Create bias variable
+        b = tf.get_variable('biases', [num_channels_out])
         
         # Define the convolution flow graph
+        conv = tf.nn.conv2d(input, w, strides=[1, stride_h, stride_w, 1], padding=padding)
         
         # Add bias to conv output
-        
+        out = tf.nn.bias_add(conv,b)
+
         # Apply non-linearity (if asked) and return output
-        pass
+        if non_linear_fn:
+            out = non_linear_fn(out)
+
+        return out
 
 def deconv(input, name, filter_dims, stride_dims, padding='SAME',
            non_linear_fn=tf.nn.relu):
@@ -46,15 +53,21 @@ def deconv(input, name, filter_dims, stride_dims, padding='SAME',
     with tf.variable_scope(name) as scope:
         # Create filter weight variable
         # Note that num_channels_out and in positions are flipped for deconv.
-        
+        w = tf.get_variable('kernel', [filter_h, filter_w, num_channels_out, num_channels_in])
+
         # Create bias variable
+        b = tf.get_variable('biases', [num_channels_out])
         
         # Define the deconv flow graph
+        deconv = tf.nn.conv2d_transpose(input, w, output_dims, strides=[1, stride_h, stride_w, 1], padding=padding)
         
         # Add bias to deconv output
+        out = tf.nn.bias_add(deconv,b)
         
         # Apply non-linearity (if asked) and return output
-        pass
+        if non_linear_fn:
+            out = non_linear_fn(out)
+        return out
 
 def max_pool(input, name, filter_dims, stride_dims, padding='SAME'):
     assert(len(filter_dims) == 2) # filter height and width
@@ -64,7 +77,10 @@ def max_pool(input, name, filter_dims, stride_dims, padding='SAME'):
     stride_h, stride_w = stride_dims
     
     # Define the max pool flow graph and return output
-    pass
+    with tf.variable_scope(name) as scope:
+        pool1 = tf.nn.max_pool(input, ksize=[1, filter_h, filter_w, 1], strides=[1, stride_h, stride_w, 1], padding=padding, name=scope.name)
+
+    return pool1
 
 def fc(input, name, out_dim, non_linear_fn=tf.nn.relu):
     assert(type(out_dim) == int)
@@ -84,10 +100,14 @@ def fc(input, name, out_dim, non_linear_fn=tf.nn.relu):
             flat_input = input
 
         # Create weight variable
+        w = tf.get_variable('weights', [in_dim, out_dim])
         
         # Create bias variable
+        b = tf.get_variable('biases', [out_dim])
         
         # Define FC flow graph
+        out = tf.nn.xw_plus_b(flat_input, w, b)
         
-        # Apply non-linearity (if asked) and return output
-        pass
+        if non_linear_fn:
+            out = non_linear_fn(out)
+        return out

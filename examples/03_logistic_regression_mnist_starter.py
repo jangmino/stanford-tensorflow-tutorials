@@ -20,26 +20,29 @@ n_epochs = 10
 
 # Step 1: Read in data
 # using TF Learn's built in function to load MNIST data to the folder data/mnist
-mnist = input_data.read_data_sets('/data/mnist', one_hot=True) 
+mnist = input_data.read_data_sets('/data/mnist', one_hot=True)
 
 # Step 2: create placeholders for features and labels
 # each image in the MNIST data is of shape 28*28 = 784
 # therefore, each image is represented with a 1x784 tensor
 # there are 10 classes for each image, corresponding to digits 0 - 9. 
 # Features are of the type float, and labels are of the type int
-
+X = tf.placeholder(tf.float32, [batch_size, 784], name='image')
+Y = tf.placeholder(tf.int32, [batch_size, 10], name='label')
 
 # Step 3: create weights and bias
 # weights and biases are initialized to 0
 # shape of w depends on the dimension of X and Y so that Y = X * w + b
 # shape of b depends on Y
-
+w = tf.Variable(tf.random_normal(shape=[784, 10], stddev=0.01), name="weight")
+b = tf.Variable(tf.zeros(shape=[1, 10]), name="bias")
 
 # Step 4: build model
 # the model that returns the logits.
 # this logits will be later passed through softmax layer
 # to get the probability distribution of possible label of the image
 # DO NOT DO SOFTMAX HERE
+logits = tf.matmul(X, w) + b
 
 
 # Step 5: define loss function
@@ -47,13 +50,16 @@ mnist = input_data.read_data_sets('/data/mnist', one_hot=True)
 # use the method:
 # tf.nn.softmax_cross_entropy_with_logits(logits, Y)
 # then use tf.reduce_mean to get the mean loss of the batch
-
+entropy = tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=Y, name="entropy")
+loss = tf.reduce_mean(entropy)
 
 # Step 6: define training op
 # using gradient descent to minimize loss
-
+train_op = tf.train.GradientDescentOptimizer(learning_rate=0.001).minimize(loss)
 
 with tf.Session() as sess:
+	writer = tf.summary.FileWriter('./my_graph/03/logistic_reg', sess.graph)
+
 	start_time = time.time()
 	sess.run(tf.global_variables_initializer())	
 	n_batches = int(mnist.train.num_examples/batch_size)
@@ -63,6 +69,7 @@ with tf.Session() as sess:
 		for _ in range(n_batches):
 			X_batch, Y_batch = mnist.train.next_batch(batch_size)
 			# TO-DO: run optimizer + fetch loss_batch
+			_, loss_batch = sess.run([train_op, loss], feed_dict={X: X_batch, Y: Y_batch})
 			# 
 			# 
 			total_loss += loss_batch
@@ -82,7 +89,9 @@ with tf.Session() as sess:
 	
 	for i in range(n_batches):
 		X_batch, Y_batch = mnist.test.next_batch(batch_size)
-		accuracy_batch = sess.run([accuracy], feed_dict={X: X_batch, Y:Y_batch}) 
-		total_correct_preds += accuracy_batch	
+		accuracy_batch = sess.run(accuracy, feed_dict={X: X_batch, Y:Y_batch})
+		total_correct_preds += accuracy_batch
 	
 	print('Accuracy {0}'.format(total_correct_preds/mnist.test.num_examples))
+
+	writer.close()

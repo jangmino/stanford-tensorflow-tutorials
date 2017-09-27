@@ -47,7 +47,7 @@ class SkipGramModel:
     def _create_embedding(self):
         """ Step 2: define weights. In word2vec, it's actually the weights that we care about """
         # Assemble this part of the graph on the CPU. You can change it to GPU if you have GPU
-        with tf.device('/cpu:0'):
+        with tf.device(None):
             with tf.name_scope("embed"):
                 self.embed_matrix = tf.Variable(tf.random_uniform([self.vocab_size, 
                                                                     self.embed_size], -1.0, 1.0), 
@@ -55,7 +55,7 @@ class SkipGramModel:
 
     def _create_loss(self):
         """ Step 3 + 4: define the model + the loss function """
-        with tf.device('/cpu:0'):
+        with tf.device(None):
             with tf.name_scope("loss"):
                 # Step 3: define the inference
                 embed = tf.nn.embedding_lookup(self.embed_matrix, self.center_words, name='embed')
@@ -76,7 +76,7 @@ class SkipGramModel:
                                                     num_classes=self.vocab_size), name='loss')
     def _create_optimizer(self):
         """ Step 5: define optimizer """
-        with tf.device('/cpu:0'):
+        with tf.device(None):
             self.optimizer = tf.train.GradientDescentOptimizer(self.lr).minimize(self.loss, 
                                                               global_step=self.global_step)
 
@@ -99,9 +99,12 @@ class SkipGramModel:
 def train_model(model, batch_gen, num_train_steps, weights_fld):
     saver = tf.train.Saver() # defaults to saving all variables - in this case embed_matrix, nce_weight, nce_bias
 
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+
     initial_step = 0
     utils.make_dir('checkpoints')
-    with tf.Session() as sess:
+    with tf.Session(config=config) as sess:
         sess.run(tf.global_variables_initializer())
         ckpt = tf.train.get_checkpoint_state(os.path.dirname('checkpoints/checkpoint'))
         # if that checkpoint exists, restore from checkpoint
@@ -126,26 +129,26 @@ def train_model(model, batch_gen, num_train_steps, weights_fld):
         ####################
         # code to visualize the embeddings. uncomment the below to visualize embeddings
         # run "'tensorboard --logdir='processed'" to see the embeddings
-        # final_embed_matrix = sess.run(model.embed_matrix)
+        final_embed_matrix = sess.run(model.embed_matrix)
         
         # # it has to variable. constants don't work here. you can't reuse model.embed_matrix
-        # embedding_var = tf.Variable(final_embed_matrix[:1000], name='embedding')
-        # sess.run(embedding_var.initializer)
+        embedding_var = tf.Variable(final_embed_matrix[:1000], name='embedding')
+        sess.run(embedding_var.initializer)
 
-        # config = projector.ProjectorConfig()
-        # summary_writer = tf.summary.FileWriter('processed')
+        config = projector.ProjectorConfig()
+        summary_writer = tf.summary.FileWriter('processed')
 
         # # add embedding to the config file
-        # embedding = config.embeddings.add()
-        # embedding.tensor_name = embedding_var.name
+        embedding = config.embeddings.add()
+        embedding.tensor_name = embedding_var.name
         
         # # link this tensor to its metadata file, in this case the first 500 words of vocab
-        # embedding.metadata_path = 'processed/vocab_1000.tsv'
+        embedding.metadata_path = 'processed/vocab_1000.tsv'
 
         # # saves a configuration file that TensorBoard will read during startup.
-        # projector.visualize_embeddings(summary_writer, config)
-        # saver_embed = tf.train.Saver([embedding_var])
-        # saver_embed.save(sess, 'processed/model3.ckpt', 1)
+        projector.visualize_embeddings(summary_writer, config)
+        saver_embed = tf.train.Saver([embedding_var])
+        saver_embed.save(sess, 'processed/model3.ckpt', 1)
 
 def main():
     model = SkipGramModel(VOCAB_SIZE, EMBED_SIZE, BATCH_SIZE, NUM_SAMPLED, LEARNING_RATE)

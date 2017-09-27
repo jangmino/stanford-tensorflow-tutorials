@@ -15,7 +15,9 @@ os.environ['TF_CPP_MIN_LOG_LEVEL']='2'
 import time 
 
 import tensorflow as tf
-import tf.contrib.layers as layers
+
+import tensorflow.contrib.layers as layers
+
 from tensorflow.examples.tutorials.mnist import input_data
 
 import utils
@@ -135,7 +137,10 @@ optimizer = tf.train.AdamOptimizer(LEARNING_RATE).minimize(loss,
 utils.make_dir('checkpoints')
 utils.make_dir('checkpoints/convnet_mnist')
 
-with tf.Session() as sess:
+config = tf.ConfigProto()
+config.gpu_options.allow_growth = True
+
+with tf.Session(config=config) as sess:
     sess.run(tf.global_variables_initializer())
     saver = tf.train.Saver()
     # to visualize using TensorBoard

@@ -61,27 +61,27 @@ with tf.variable_scope('conv1') as scope:
     # create kernel variable of dimension [5, 5, 1, 32]
     # use tf.truncated_normal_initializer()
     
-    # TO DO
+    kernel = tf.get_variable("kernel", [5,5,1,32], initializer=tf.truncated_normal_initializer())
 
     # create biases variable of dimension [32]
     # use tf.constant_initializer(0.0)
     
-    # TO DO 
+    biases = tf.get_variable("biases", [32], initializer=tf.constant_initializer(0.0))
 
     # apply tf.nn.conv2d. strides [1, 1, 1, 1], padding is 'SAME'
     
-    # TO DO
+    conv = tf.nn.conv2d(images, kernel, strides=[1,1,1,1], padding="SAME")
 
     # apply relu on the sum of convolution output and biases
     
-    # TO DO 
+    conv1 = tf.nn.relu(conv + biases, name=scope.name)
 
     # output is of dimension BATCH_SIZE x 28 x 28 x 32
 
 with tf.variable_scope('pool1') as scope:
     # apply max pool with ksize [1, 2, 2, 1], and strides [1, 2, 2, 1], padding 'SAME'
     
-    # TO DO
+    pool1 = tf.nn.max_pool(conv1, ksize=[1,2,2,1], strides=[1,2,2,1], padding='SAME', name=scope.name)
 
     # output is of dimension BATCH_SIZE x 14 x 14 x 32
 
@@ -109,7 +109,8 @@ with tf.variable_scope('fc') as scope:
     
     # create weights and biases
 
-    # TO DO
+    w = tf.get_variable('weights', [input_features, 1024], initializer=tf.truncated_normal_initializer())
+    b = tf.get_variable('biases', [1024], initializer=tf.constant_initializer(0.0))
 
     # reshape pool2 to 2 dimensional
     pool2 = tf.reshape(pool2, [-1, input_features])
@@ -126,7 +127,10 @@ with tf.variable_scope('softmax_linear') as scope:
     # this you should know. get logits without softmax
     # you need to create weights and biases
 
-    # TO DO
+    w = tf.get_variable('weights', [1024, N_CLASSES], initializer=tf.truncated_normal_initializer())
+    b = tf.get_variable('biases', [N_CLASSES], initializer=tf.constant_initializer(0.0))
+
+    logits = tf.matmul(fc, w) + b
 
 # Step 6: define loss function
 # use softmax cross entropy with logits as the loss function
@@ -134,15 +138,19 @@ with tf.variable_scope('softmax_linear') as scope:
 with tf.name_scope('loss'):
     # you should know how to do this too
     
-    # TO DO
+    entropy = tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=Y)
+    loss = tf.reduce_mean(entropy)
 
 # Step 7: define training op
 # using gradient descent with learning rate of LEARNING_RATE to minimize cost
 # don't forgot to pass in global_step
 
-# TO DO
 
-with tf.Session() as sess:
+optimizer = tf.train.GradientDescentOptimizer(learning_rate=LEARNING_RATE).minimize(loss)
+
+config = tf.ConfigProto()
+config.gpu_options.allow_growth = True
+with tf.Session(config=config) as sess:
     sess.run(tf.global_variables_initializer())
     saver = tf.train.Saver()
     # to visualize using TensorBoard

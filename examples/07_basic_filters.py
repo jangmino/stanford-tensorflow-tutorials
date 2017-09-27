@@ -38,6 +38,10 @@ import kernels
 
 FILENAME = 'data/friday.jpg'
 
+config = tf.ConfigProto()
+config.gpu_options.allow_growth = True
+
+
 def read_one_image(filename):
     """ This is just to demonstrate how to open an image in TensorFlow,
     but it's actually a lot easier to use Pillow 
@@ -59,7 +63,7 @@ def convolve(image, kernels, rgb=True, strides=[1, 3, 3, 1], padding='SAME'):
     return images
 
 def get_real_images(images):
-    with tf.Session() as sess:
+    with tf.Session(config=config) as sess:
         coord = tf.train.Coordinator()
         threads = tf.train.start_queue_runners(coord=coord)
         images = sess.run(images)
